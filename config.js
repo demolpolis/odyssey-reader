@@ -73,3 +73,7 @@ function getConfigValue(key, defaultValue) {
 function saveConfigValue(key, value) {
     localStorage.setItem(CONFIG.STORAGE_KEYS[key], value);
 }
+
+// Make functions globally accessible
+window.getConfigValue = getConfigValue;
+window.saveConfigValue = saveConfigValue;

@@ -15,6 +15,13 @@ const AppState = {
     analyses: [] // Store all analyses with their page references
 };
 
+// Make functions globally accessible for onclick handlers
+window.analyzeCurrentPage = analyzeCurrentPage;
+window.analyzeSelection = analyzeSelection;
+window.defineWord = defineWord;
+window.clearSelection = clearSelection;
+window.toggleCard = toggleCard;
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
@@ -464,41 +471,53 @@ async function callClaudeAPI(prompt) {
         throw new Error(`API call limit reached (${AppState.maxApiCalls} calls per session)`);
     }
     
-    const response = await fetch(CONFIG.API_ENDPOINT, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': AppState.apiKey,
-            'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-            model: CONFIG.MODEL,
-            max_tokens: CONFIG.MAX_TOKENS,
-            messages: [{
-                role: 'user',
-                content: prompt
-            }]
-        })
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'API request failed');
+    try {
+        const response = await fetch(CONFIG.API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': AppState.apiKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: CONFIG.MODEL,
+                max_tokens: CONFIG.MAX_TOKENS,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            })
+        });
+        
+        if (!response.ok) {
+            let errorMessage = `API request failed (${response.status})`;
+            try {
+                const error = await response.json();
+                errorMessage = error.error?.message || errorMessage;
+            } catch (e) {
+                // If we can't parse error JSON, use status text
+                errorMessage = response.statusText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        // Increment API counter
+        AppState.apiCallCount++;
+        updateApiCounter();
+        
+        // Extract text from response
+        const text = data.content
+            .filter(item => item.type === 'text')
+            .map(item => item.text)
+            .join('\n');
+        
+        return text;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
     }
-    
-    const data = await response.json();
-    
-    // Increment API counter
-    AppState.apiCallCount++;
-    updateApiCounter();
-    
-    // Extract text from response
-    const text = data.content
-        .filter(item => item.type === 'text')
-        .map(item => item.text)
-        .join('\n');
-    
-    return text;
 }
 
 function formatAnalysis(text) {
