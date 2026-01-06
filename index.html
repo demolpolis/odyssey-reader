@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Odyssey - AI-Enhanced Reader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal">
+        <div class="modal-content">
+            <h2>🔑 Enter Your Anthropic API Key</h2>
+            <p class="modal-description">
+                Your API key will be stored locally on this device only. 
+                Get your key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>
+            </p>
+            <input 
+                type="password" 
+                id="apiKeyInput" 
+                placeholder="sk-ant-..." 
+                autocomplete="off"
+            />
+            <button id="saveApiKey" class="btn-primary">Save Key</button>
+            <p class="modal-note">
+                Note: The key starts with "sk-ant-" and will be used to power AI features.
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <h1 class="book-title">📖 The Odyssey</h1>
+            <span class="book-subtitle" id="currentLocation">Book I</span>
+        </div>
+        <div class="nav-right">
+            <!-- Theme Toggle -->
+            <button id="themeToggle" class="icon-btn" title="Toggle Dark Mode">
+                <span class="theme-icon">☀️</span>
+            </button>
+            
+            <!-- Font Size Controls -->
+            <button id="fontDecrease" class="icon-btn" title="Decrease Font Size">
+                <span class="font-icon-small">A</span>
+            </button>
+            <button id="fontIncrease" class="icon-btn" title="Increase Font Size">
+                <span class="font-icon-large">A</span>
+            </button>
+            
+            <!-- Settings -->
+            <button id="settingsBtn" class="icon-btn" title="Settings">
+                <span class="settings-icon">⚙️</span>
+            </button>
+            
+            <!-- API Usage Counter -->
+            <div class="api-counter" id="apiCounter">
+                <span id="apiUsageText">0 API calls</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Left Panel: Reading Area -->
+        <div class="reading-panel">
+            <div class="scroll-zone" id="scrollZone"></div>
+            <div class="text-content" id="textContent">
+                <div class="loading">Loading The Odyssey...</div>
+            </div>
+            <div class="context-indicator" id="contextIndicator"></div>
+        </div>
+
+        <!-- Right Panel: AI Commentary -->
+        <div class="commentary-panel">
+            <div class="commentary-content" id="commentaryContent">
+                <div class="empty-state">
+                    <p>Select text or analyze the current page to see AI commentary</p>
+                    <button class="btn-primary" id="analyzePageBtn">
+                        Analyze Current Page
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Question Input (always at bottom) -->
+            <div class="question-input-container">
+                <input 
+                    type="text" 
+                    id="questionInput" 
+                    placeholder="Ask a question about this passage..."
+                    class="question-input"
+                />
+                <button id="askQuestionBtn" class="btn-primary btn-small">Ask AI</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button id="prevPageBtn" class="nav-btn">← Previous</button>
+        <div class="page-info">
+            <span id="pageCounter">Page 1 of 1</span>
+            <div class="jump-to-page">
+                <input 
+                    type="number" 
+                    id="jumpToPageInput" 
+                    min="1" 
+                    placeholder="Go to page..."
+                />
+                <button id="jumpToPageBtn" class="btn-small">Go</button>
+            </div>
+        </div>
+        <button id="nextPageBtn" class="nav-btn">Next →</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>⚙️ Settings</h2>
+                <button id="closeSettings" class="close-btn">×</button>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Reading Mode</h3>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="readingMode" value="easy" checked />
+                        <span>📖 Easy Mode (EPUB pages)</span>
+                    </label>
+                    <label class="disabled">
+                        <input type="radio" name="readingMode" value="advanced" disabled />
+                        <span>🚀 Advanced Mode (Continuous scroll - Coming soon)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>AI Prompts</h3>
+                <button class="btn-secondary" id="editPagePrompt">
+                    Edit Page Analysis Prompt →
+                </button>
+                <button class="btn-secondary" id="editSelectionPrompt">
+                    Edit Selection Analysis Prompt →
+                </button>
+            </div>
+
+            <div class="settings-section">
+                <h3>API Management</h3>
+                <div class="setting-item">
+                    <label>Max API calls per session:</label>
+                    <input type="number" id="maxApiCalls" value="50" min="1" max="200" />
+                </div>
+                <button class="btn-danger" id="clearApiKey">
+                    Clear Stored API Key
+                </button>
+            </div>
+
+            <div class="settings-section">
+                <h3>Session Stats</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">API Calls Made</div>
+                        <div class="stat-value" id="sessionApiCalls">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Estimated Cost</div>
+                        <div class="stat-value" id="estimatedCost">$0.00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Editor Modal -->
+    <div id="promptEditorModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <h2 id="promptEditorTitle">Edit Prompt</h2>
+            <textarea id="promptEditor" rows="10"></textarea>
+            <div class="modal-actions">
+                <button id="savePrompt" class="btn-primary">Save</button>
+                <button id="cancelPrompt" class="btn-secondary">Cancel</button>
+                <button id="resetPrompt" class="btn-secondary">Reset to Default</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="odyssey-data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
