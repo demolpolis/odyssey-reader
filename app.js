@@ -358,10 +358,11 @@ async function analyzeSelection() {
 
 async function defineWord() {
     if (!AppState.selectedText) return;
+    if (!checkApiKey()) return;
+    if (!checkApiLimit()) return;
     
     const word = AppState.selectedText.trim();
     
-    // Simple dictionary definition (no API call needed)
     const analysisCard = document.createElement('div');
     analysisCard.className = 'analysis-card';
     
@@ -371,23 +372,48 @@ async function defineWord() {
         commentary.insertBefore(analysisCard, actionPanel.nextSibling);
     }
     
+    // Show loading
     analysisCard.innerHTML = `
         <div class="card-header">
             <h3>📖 Definition</h3>
         </div>
-        <div class="analysis-content">
-            <p><strong>Word:</strong> ${word}</p>
-            <p class="definition-note">
-                For detailed definitions, try using Claude's analysis or consult a dictionary.
-                Greek/archaic terms often have cultural significance beyond simple definitions.
-            </p>
-            <button class="btn-primary btn-small" onclick="analyzeSelection()">
-                Get Full AI Analysis
-            </button>
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Looking up definition...</p>
         </div>
     `;
     
-    clearSelection();
+    try {
+        const prompt = `Define the word "${word}" as it would be used in Homer's Odyssey (Robert Fagles translation). Include:
+1. The basic definition
+2. How it's used in ancient Greek context
+3. Any cultural or historical significance
+
+Keep it concise but informative.`;
+        
+        const response = await callClaudeAPI(prompt);
+        
+        analysisCard.innerHTML = `
+            <div class="card-header">
+                <h3>📖 Definition: ${word}</h3>
+            </div>
+            <div class="analysis-content">
+                ${formatAnalysis(response)}
+            </div>
+        `;
+        
+        clearSelection();
+        
+    } catch (error) {
+        analysisCard.innerHTML = `
+            <div class="card-header">
+                <h3>📖 Definition</h3>
+            </div>
+            <div class="error-content">
+                <p>❌ Error: ${error.message}</p>
+            </div>
+        `;
+    }
 }
 
 async function askCustomQuestion() {
@@ -471,6 +497,9 @@ async function callClaudeAPI(prompt) {
         throw new Error(`API call limit reached (${AppState.maxApiCalls} calls per session)`);
     }
     
+    console.log('Making API call to:', CONFIG.API_ENDPOINT);
+    console.log('Using model:', CONFIG.MODEL);
+    
     try {
         const response = await fetch(CONFIG.API_ENDPOINT, {
             method: 'POST',
@@ -489,19 +518,24 @@ async function callClaudeAPI(prompt) {
             })
         });
         
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
             let errorMessage = `API request failed (${response.status})`;
             try {
                 const error = await response.json();
+                console.error('API Error Response:', error);
                 errorMessage = error.error?.message || errorMessage;
             } catch (e) {
                 // If we can't parse error JSON, use status text
                 errorMessage = response.statusText || errorMessage;
+                console.error('Could not parse error response:', e);
             }
             throw new Error(errorMessage);
         }
         
         const data = await response.json();
+        console.log('API Response received successfully');
         
         // Increment API counter
         AppState.apiCallCount++;
@@ -515,7 +549,17 @@ async function callClaudeAPI(prompt) {
         
         return text;
     } catch (error) {
-        console.error('API Error:', error);
+        console.error('API Error Details:', error);
+        
+        // Provide more helpful error messages
+        if (error.message.includes('Failed to fetch')) {
+            throw new Error('Network error: Unable to connect to Anthropic API. Please check your internet connection and API key.');
+        } else if (error.message.includes('401')) {
+            throw new Error('Invalid API key. Please check your API key in settings.');
+        } else if (error.message.includes('429')) {
+            throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+        }
+        
         throw error;
     }
 }

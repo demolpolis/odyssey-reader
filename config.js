@@ -3,7 +3,7 @@ const CONFIG = {
     // API Configuration
     API_ENDPOINT: 'https://api.anthropic.com/v1/messages',
     MODEL: 'claude-sonnet-4-20250514',
-    MAX_TOKENS: 1000,
+    MAX_TOKENS: 2048,
     
     // Usage Limits
     DEFAULT_MAX_API_CALLS: 50,
